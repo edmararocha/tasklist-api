@@ -1,8 +1,8 @@
 import user from '../models/User.js';
-import dotenv from 'dotenv/config';
 import jwt from "jsonwebtoken";
+import dotenv from 'dotenv/config';
 
-let token;
+let sisToken;
 
 const controller = {
     createUser: (req, res) => {
@@ -31,9 +31,9 @@ const controller = {
                 password: req.body.password
             }
         }).then( admin => {
-            const id = admin.id;
+            const id = admin[0].id;
 
-            token = jwt.sign({id}, process.env.SECRET,  {
+            sisToken = jwt.sign({id}, process.env.SECRET,  {
                 expiresIn: '24h'
             });
 
@@ -41,9 +41,9 @@ const controller = {
                 error: false,
                 msg: "Login realizado com sucesso",
                 auth: true,
-                token: token
+                token: sisToken
             });
-        }).catch( () => {
+        }).catch( (e) => {
             return res.status(200).json({
                 error: true,
                 msg: "Login inválido",
@@ -52,6 +52,29 @@ const controller = {
             });
         });
     },  
+
+    verifyJWT: (req, res, next) => {
+        const token = sisToken;
+
+        if (!token) {
+            return res.status(400).json({
+                auth: false,
+                message: "Não há um token válido"
+            })
+        }
+
+        jwt.verify(token, process.env.SECRET, (err, decoded) => {
+            if (err) {
+                return res.status(400).json({
+                    auth: false,
+                    message: "Falha ao autenticar token"
+                })
+            }
+            
+            req.id = decoded.id;
+            next();
+        });
+    },
 
     getUsers: (req, res) => {
         user.findAll().then( (tasks) => {
